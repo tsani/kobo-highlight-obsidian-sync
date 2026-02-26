@@ -1,0 +1,12 @@
+[Unit]
+Description=Automatic sync of KOBO eReader highlights to Obsidian
+
+[Service]
+Type=simple
+Environment=VAULT_DIR=%h/personal-vault
+Environment=UDISKS_ROOT=/run/media/%u
+Environment=DB_PATH=/run/media/%u/KOBOeReader/.kobo/KoboReader.sqlite
+ExecStart=%h/projects/kobo-highlight-obsidian-sync/.venv/bin/python %h/projects/kobo-highlight-obsidian-sync/sync.py -w
+
+[Install]
+WantedBy=default.target

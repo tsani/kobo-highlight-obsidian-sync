@@ -1,0 +1,7 @@
+#!/bin/bash
+
+source .venv/bin/activate
+export VAULT_DIR=$HOME/personal-vault
+export UDISKS_ROOT=/run/media/$USER
+export DB_PATH=/run/media/$USER/KOBOeReader/.kobo/KoboReader.sqlite
+exec python sync.py "$@"
