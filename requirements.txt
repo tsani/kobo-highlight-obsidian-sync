@@ -1,1 +1,6 @@
+bidict==0.23.1
+dbus-fast==4.0.0
+desktop-notifier==6.2.0
 notifykit==0.3.0
+packaging==26.0
+typing_extensions==4.15.0

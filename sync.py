@@ -11,7 +11,10 @@ from datetime import datetime
 import sys
 from notifykit import Notifier, CommonFilter
 from pathlib import Path
+from desktop_notifier import DesktopNotifier
 import json
+
+desktop_notifier = DesktopNotifier(app_name="Kobo Highlight Sync")
 
 def die(*args):
     print(*args, file=sys.stderr)
@@ -70,12 +73,14 @@ def run_sync_on_db(conn, as_of_date):
     """)
 
     latest_highlight_date = datetime.fromtimestamp(0)
+    count = 0
 
     for bookmark_id, title, highlight, isodatestring in cursor.fetchall():
         date = datetime.fromisoformat(isodatestring)
         if date <= as_of_date: continue
 
         latest_highlight_date = max(date, latest_highlight_date)
+        count += 1
         datestring = date.strftime('%Y-%m-%d')
 
         daily_note_path = make_daily_note_path(datestring)
@@ -107,7 +112,7 @@ def run_sync_on_db(conn, as_of_date):
             append_line(f, highlight_entry_bytes)
             print('added highlight:', title, datestring)
 
-    return latest_highlight_date
+    return latest_highlight_date, count
 
     # XXX This ^ implementation is bad:
     # 1. It reopens the same book file over and over when multiple
@@ -118,23 +123,33 @@ def run_sync_on_db(conn, as_of_date):
     # to add all highlights for a particular book in one shot to that
     # book's note.
 
-def run_sync(as_of_date):
+async def run_sync(as_of_date):
     if not path.exists(DB_PATH):
         print(f'fatal: database {DB_PATH} does not exist')
         return as_of_date
 
     with sqlite3.connect(DB_PATH) as conn:
-        latest_highlight_date = run_sync_on_db(conn, as_of_date)
+        latest_highlight_date, count = run_sync_on_db(conn, as_of_date)
     print('Sync complete')
     if latest_highlight_date > as_of_date:
         write_state({
             'as_of_date': latest_highlight_date.isoformat()
         })
+        await desktop_notifier.send(
+            title="Kobo Highlight Sync",
+            message=f"Synced {count} new highlight{'s' if count != 1 else ''}.",
+        )
         return latest_highlight_date
     else:
+        print("There was nothing to sync.")
         return as_of_date
 
 async def run_watch(as_of_date):
+    # try to do a run on start in case the device is already plugged in
+    # when the system is running
+    if path.exists(DB_PATH):
+        as_of_date = await run_sync(as_of_date)
+
     notifier = Notifier(
         debounce_ms=200,
         filter=CommonFilter(),
@@ -143,7 +158,7 @@ async def run_watch(as_of_date):
     async for events in notifier:
         if path.exists(DB_PATH):
             print('Database appeared')
-            as_of_date = run_sync(as_of_date)
+            as_of_date = await run_sync(as_of_date)
 
 def iso8601_datetime(value: str) -> datetime:
     try:
@@ -176,7 +191,7 @@ def main():
     if args.watch:
         asyncio.run(run_watch(as_of_date))
     else:
-        run_sync(as_of_date)
+        asyncio.run(run_sync(as_of_date))
 
 if __name__ == '__main__': main()
 
