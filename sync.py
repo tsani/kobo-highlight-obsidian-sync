@@ -83,7 +83,7 @@ def run_sync_on_db(conn, as_of_date):
 
         highlight = '\n'.join(f'\t> {line}' for line in highlight.split('\n'))
         highlight_entry_text = \
-            f'- {datestring} \n{highlight}'
+            f'- [[{datestring}]] \n{highlight}'
         highlight_entry_bytes = highlight_entry_text.encode('utf-8')
 
         basic_read_entry_text = \
